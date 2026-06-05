@@ -1,0 +1,658 @@
+/* Minimal global tweaks layered on top of Radix Themes. */
+:root {
+  --titlebar-h: 38px;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, 'Helvetica Neue',
+    Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Dark mode overrides ───────────────────────────────────────────────
+   Radix Themes v3 sets CSS variables on .radix-themes (not :root),
+   and only overrides them for the .dark selector.  Custom components
+   that read those variables need explicit dark-mode values here so
+   they don't stay locked to the light palette. ─────────────────────── */
+.dark .fp-titlebar,
+.radix-themes.dark .fp-titlebar {
+  background: var(--gray-2);
+  border-bottom-color: var(--gray-4);
+  color: var(--gray-12);
+}
+.dark .fp-titlebar .fp-window-btn,
+.radix-themes.dark .fp-titlebar .fp-window-btn {
+  color: var(--gray-12);
+}
+.dark .fp-titlebar .fp-window-btn:hover,
+.radix-themes.dark .fp-titlebar .fp-window-btn:hover {
+  background: var(--gray-4);
+  color: var(--gray-12);
+}
+.dark .fp-window-btn-close:hover,
+.radix-themes.dark .fp-window-btn-close:hover {
+  background: #b91c1c;
+  color: white;
+}
+
+.dark .fp-sidebar,
+.radix-themes.dark .fp-sidebar {
+  border-right-color: var(--gray-4);
+}
+
+.dark .fp-main .fp-tabs,
+.radix-themes.dark .fp-main .fp-tabs {
+  border-bottom-color: var(--gray-4);
+}
+
+.dark .fp-tab,
+.radix-themes.dark .fp-tab {
+  color: var(--gray-10);
+}
+.dark .fp-tab:hover,
+.radix-themes.dark .fp-tab:hover {
+  background: var(--gray-4);
+  color: var(--gray-12);
+}
+.dark .fp-tab[data-active='true'],
+.radix-themes.dark .fp-tab[data-active='true'] {
+  background: var(--gray-4);
+  color: var(--gray-12);
+}
+
+.dark .fp-tree-row,
+.radix-themes.dark .fp-tree-row {
+  color: var(--gray-10);
+}
+.dark .fp-tree-row:hover,
+.radix-themes.dark .fp-tree-row:hover {
+  background: var(--gray-4);
+}
+.dark .fp-tree-row[data-active='true'],
+.radix-themes.dark .fp-tree-row[data-active='true'] {
+  background: var(--gray-4);
+  color: var(--gray-12);
+}
+.dark .fp-tree-row[data-kind='schema'],
+.radix-themes.dark .fp-tree-row[data-kind='schema'] {
+  color: var(--gray-12);
+}
+.dark .fp-tree-row[data-kind='table'],
+.radix-themes.dark .fp-tree-row[data-kind='table'] {
+  color: var(--gray-10);
+}
+.dark .fp-tree-children,
+.radix-themes.dark .fp-tree-children {
+  border-left-color: var(--gray-4);
+}
+
+.dark .fp-statusbar,
+.radix-themes.dark .fp-statusbar {
+  background: var(--gray-2);
+  border-top-color: var(--gray-4);
+  color: var(--gray-10);
+}
+
+.dark .fp-editor,
+.radix-themes.dark .fp-editor {
+  background: var(--gray-1);
+  border-color: var(--gray-5);
+  color: var(--gray-12);
+  caret-color: var(--accent-9);
+}
+.dark .fp-editor:focus,
+.radix-themes.dark .fp-editor:focus {
+  border-color: var(--accent-8);
+}
+
+.dark .fp-result-table th,
+.radix-themes.dark .fp-result-table th {
+  background: var(--gray-4);
+  color: var(--gray-12);
+}
+.dark .fp-result-table td,
+.radix-themes.dark .fp-result-table td {
+  border-bottom-color: var(--gray-4);
+}
+.dark .fp-result-table tbody tr:hover td,
+.radix-themes.dark .fp-result-table tbody tr:hover td {
+  background: var(--gray-3);
+}
+
+.dark .fp-null,
+.radix-themes.dark .fp-null {
+  color: var(--gray-8);
+}
+
+.dark .fp-empty,
+.radix-themes.dark .fp-empty {
+  color: var(--gray-8);
+}
+.dark .fp-empty h3,
+.radix-themes.dark .fp-empty h3 {
+  color: var(--gray-12);
+}
+.dark .fp-empty p,
+.radix-themes.dark .fp-empty p {
+  color: var(--gray-9);
+}
+
+.dark .fp-conn-list,
+.radix-themes.dark .fp-conn-list {
+  background: var(--gray-1);
+}
+
+.dark .fp-empty-state,
+.radix-themes.dark .fp-empty-state {
+  color: var(--gray-8);
+}
+
+.dark .fp-codeblock,
+.radix-themes.dark .fp-codeblock {
+  background: var(--gray-3);
+  border-color: var(--gray-5);
+  color: var(--gray-11);
+}
+
+.dark .fp-snippet-row:hover,
+.radix-themes.dark .fp-snippet-row:hover {
+  background: var(--gray-4);
+}
+
+.dark .fp-error,
+.radix-themes.dark .fp-error {
+  color: var(--red-11);
+  background: color-mix(in srgb, var(--red-6) 20%, transparent);
+  border-color: color-mix(in srgb, var(--red-6) 50%, transparent);
+}
+
+.dark .fp-spinner,
+.radix-themes.dark .fp-spinner {
+  border-color: var(--gray-5);
+  border-top-color: var(--accent-9);
+}
+
+.dark .fp-explorer-cell[data-editing='true'],
+.radix-themes.dark .fp-explorer-cell[data-editing='true'] {
+  background: var(--gray-3);
+}
+
+.dark .fp-conn-item:hover,
+.radix-themes.dark .fp-conn-item:hover {
+  background: var(--gray-3);
+}
+
+.dark .fp-conn-item[data-active='true'],
+.radix-themes.dark .fp-conn-item[data-active='true'] {
+  background: var(--gray-4);
+  color: var(--gray-12);
+}
+
+.dark ::-webkit-scrollbar-thumb,
+.radix-themes.dark ::-webkit-scrollbar-thumb {
+  background: var(--gray-5);
+}
+.dark ::-webkit-scrollbar-thumb:hover,
+.radix-themes.dark ::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-6);
+}
+
+/* The draggable region for the custom titlebar */
+.fp-titlebar {
+  -webkit-app-region: drag;
+  position: relative;
+  height: var(--titlebar-h);
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--gray-a4);
+  background: var(--color-panel-solid);
+  user-select: none;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--gray-11);
+}
+
+.fp-titlebar .fp-titlebar-actions {
+  -webkit-app-region: no-drag;
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.fp-window-controls {
+  -webkit-app-region: no-drag;
+}
+
+.fp-window-btn {
+  width: 30px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--gray-11);
+  border-radius: 4px;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.fp-window-btn:hover {
+  background: var(--gray-a4);
+  color: var(--gray-12);
+}
+.fp-window-btn-close:hover {
+  background: #e81123;
+  color: white;
+}
+
+.fp-app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden; /* caps the flex column so statusbar stays pinned to bottom */
+}
+
+.fp-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Horizontal content row: Sidebar + Main + Snippets */
+.fp-content-row {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+  margin-bottom: 26px;
+}
+
+.fp-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--gray-a4);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.fp-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  height: 100%;
+}
+
+/* Make Radix Tabs.Content only occupy space for the active tab.
+   Without this, all Tabs.Content elements are laid out in DOM
+   regardless of which one is "selected", pushing the Statusbar down. */
+[data-radix-tabs-content] {
+  display: none;
+}
+[data-radix-tabs-content][data-state='active'] {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.fp-snippets {
+  width: 280px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--gray-a4);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.fp-tabs {
+  border-bottom: 1px solid var(--gray-a4);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 2px;
+  height: 38px;
+}
+
+.fp-tab {
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--gray-11);
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fp-tab:hover {
+  background: var(--gray-a3);
+}
+
+.fp-tab[data-active='true'] {
+  background: var(--gray-a4);
+  color: var(--gray-12);
+}
+
+.fp-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.fp-tree-row {
+  display: flex;
+  align-items: center;
+  padding: 4px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+  gap: 6px;
+  border-radius: 4px;
+  margin: 1px 6px;
+}
+
+.fp-tree-row:hover {
+  background: var(--gray-a3);
+}
+
+.fp-tree-row[data-active='true'] {
+  background: var(--gray-a4);
+  color: var(--gray-12);
+}
+
+.fp-tree-row[data-kind='schema'] {
+  font-weight: 500;
+  color: var(--gray-12);
+}
+
+.fp-tree-row[data-kind='table'] {
+  color: var(--gray-11);
+  font-size: 12.5px;
+}
+
+.fp-tree-children {
+  margin-left: 12px;
+  border-left: 1px solid var(--gray-a4);
+  padding-left: 4px;
+  /* Cap each schema's table list so a single fat schema (hundreds of tables)
+     doesn't push the rest of the explorer off-screen. Scroll is scoped to the
+     children block — the outer SidebarTree still scrolls between schemas. */
+  max-height: 50vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Avoid the scrollbar eating into the right edge of the row content */
+  scrollbar-gutter: stable;
+}
+
+.fp-statusbar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 26px;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  border-top: 1px solid var(--gray-a4);
+  font-size: 11.5px;
+  color: var(--gray-11);
+  background: var(--color-panel-solid);
+  gap: 14px;
+}
+
+.fp-editor {
+  border: 1px solid var(--gray-a5);
+  border-radius: 6px;
+  background: var(--gray-1);
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, 'SF Mono', Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.55;
+  min-height: 140px;
+  padding: 10px 12px;
+  outline: none;
+  white-space: pre;
+  overflow: auto;
+  tab-size: 2;
+  caret-color: var(--accent-9);
+}
+
+.fp-editor:focus {
+  border-color: var(--accent-8);
+}
+
+.fp-result-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+}
+
+.fp-result-table th,
+.fp-result-table td {
+  text-align: left;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--gray-a3);
+  white-space: nowrap;
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fp-result-table th {
+  background: var(--gray-a2);
+  color: var(--gray-12);
+  font-weight: 500;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.fp-result-table tbody tr:hover {
+  background: var(--gray-a2);
+}
+
+.fp-null {
+  color: var(--gray-9);
+  font-style: italic;
+}
+
+.fp-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--gray-10);
+  gap: 8px;
+  padding: 40px;
+  text-align: center;
+}
+
+.fp-empty h3 {
+  margin: 0;
+  color: var(--gray-12);
+  font-weight: 500;
+}
+
+.fp-empty p {
+  margin: 0;
+  max-width: 420px;
+  font-size: 13px;
+  color: var(--gray-10);
+}
+
+.fp-conn-list {
+  flex: 1;
+  overflow: auto;
+  padding: 6px;
+}
+
+.fp-empty-state {
+  padding: 24px 12px;
+  color: var(--gray-10);
+  font-size: 12.5px;
+  text-align: center;
+}
+
+.fp-codeblock {
+  background: var(--gray-2);
+  border: 1px solid var(--gray-a4);
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  font-size: 12px;
+  color: var(--gray-11);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.fp-error {
+  color: var(--red-11);
+  font-size: 12.5px;
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  padding: 8px 10px;
+  background: var(--red-a3);
+  border-radius: 4px;
+  border: 1px solid var(--red-a5);
+  white-space: pre-wrap;
+}
+
+.fp-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--gray-a5);
+  border-top-color: var(--accent-9);
+  border-radius: 50%;
+  animation: fp-spin 0.7s linear infinite;
+  display: inline-block;
+}
+
+@keyframes fp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Scrollbar (subtle) */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--gray-a4);
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-a6);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+
+/* Snippets panel */
+.fp-snippet-row:hover {
+  background: var(--gray-a3);
+}
+
+/* Data explorer cells (double-click to edit) */
+.fp-explorer-cell {
+  cursor: cell;
+}
+.fp-explorer-cell[data-readonly='true'] {
+  cursor: default;
+}
+
+
+/* Type indicator dot */
+.fp-type-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Nullable badge */
+.fp-nullable-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--amber-9);
+  background: var(--amber-a3);
+  border-radius: 3px;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* Sort / filter chips */
+.fp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--accent-a3);
+  border: 1px solid var(--accent-a6);
+  font-size: 12px;
+  color: var(--accent-11);
+}
+.fp-chip-label b {
+  font-weight: 600;
+}
+.fp-chip-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 2px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.1s;
+}
+.fp-chip-x:hover {
+  background: var(--accent-a5);
+}
+
+
+/* History panel in QueryTab */
+.fp-history-panel {
+  border: 1px solid var(--gray-a4);
+  border-radius: 6px;
+  padding: 8px;
+  background: var(--color-panel);
+  margin: 0 0 4px 0;
+}

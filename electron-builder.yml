@@ -1,0 +1,69 @@
+appId: dev.flashpostgre.app
+productName: FlashPostgre
+copyright: Copyright © 2026 FlashPostgre
+artifactName: ${productName}-${version}-${arch}.${ext}
+
+directories:
+  output: release
+  buildResources: build
+
+# Files to bundle inside the asar archive. Everything not listed here is
+# excluded. Keep this list tight so the installer stays small.
+files:
+  - dist/**/*
+  - dist-electron/**/*
+  - package.json
+  - "!**/*.map"
+  - "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}"
+  - "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}"
+  - "!**/node_modules/*.d.ts"
+  - "!**/node_modules/.bin"
+
+# Asar packaging
+asar: true
+# `pg` includes native bindings (and electron-store is ESM). They cannot live
+# inside asar without breaking — keep them unpacked so the runtime can find
+# their dynamic requires.
+asarUnpack:
+  - node_modules/pg/**/*
+  - node_modules/pg-native/**
+  - node_modules/libpq/**
+  - node_modules/electron-store/**
+
+# Re-compile native modules against the Electron Node version.
+npmRebuild: true
+# node_modules that should NOT be included (already unpacked or runtime-only)
+nodeGypRebuild: false
+
+# Windows targets
+win:
+  icon: build/icon.ico
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+  # Don't require code signing for the local build (no cert). Set CSC_LINK
+  # env var to enable signing.
+  sign: null
+
+# NSIS installer
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  allowElevation: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: FlashPostgre
+  deleteAppDataOnUninstall: false
+  # Show a finish page that lets the user launch the app immediately
+  runAfterFinish: true
+
+# Portable (single .exe, no install)
+portable:
+  artifactName: ${productName}-${version}-portable.${ext}
+  # Persist user data next to the exe so the portable build is self-contained
+  requestExecutionLevel: user
