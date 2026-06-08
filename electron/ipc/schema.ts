@@ -155,7 +155,8 @@ export function registerSchemaHandlers(ipc: IpcMain) {
       offset: number = 0,
       orderBy?: string,
       orderDir: 'ASC' | 'DESC' = 'ASC',
-      where?: string
+      where?: string,
+      selectFields?: string[]
     ) => {
       if (!connectionManager.has(connectionId)) {
         return { ok: false, error: 'No active connection' };
@@ -168,7 +169,11 @@ export function registerSchemaHandlers(ipc: IpcMain) {
           ? ` ORDER BY "${orderBy}" ${orderDir === 'DESC' ? 'DESC' : 'ASC'}`
           : '';
       const whereClause = where && where.trim() ? ` WHERE ${where}` : '';
-      const sql = `SELECT * FROM "${schema}"."${table}"${whereClause}${orderByClause} LIMIT ${safeLimit} OFFSET ${safeOffset}`;
+      const selectClause =
+        selectFields && selectFields.length > 0
+          ? selectFields.map((f) => `"${f}"`).join(', ')
+          : '*';
+      const sql = `SELECT ${selectClause} FROM "${schema}"."${table}"${whereClause}${orderByClause} LIMIT ${safeLimit} OFFSET ${safeOffset}`;
       try {
         const result = await connectionManager.query(connectionId, sql);
         return {

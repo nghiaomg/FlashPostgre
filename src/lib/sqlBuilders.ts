@@ -127,3 +127,43 @@ export function buildRowUpdates(
   }
   return out;
 }
+
+/**
+ * Build a DELETE statement for a single row.
+ */
+export function buildDeleteSql(
+  schema: string,
+  table: string,
+  row: Record<string, unknown>,
+  primaryKeys: string[],
+  fields: { name: string; dataTypeID: number }[]
+): string {
+  const tableIdent = `${quoteIdent(schema)}.${quoteIdent(table)}`;
+  let whereClause = '';
+
+  if (primaryKeys.length > 0) {
+    whereClause = primaryKeys
+      .map((pk) => {
+        const v = row[pk];
+        if (v === null || v === undefined) {
+          return `${quoteIdent(pk)} IS NULL`;
+        }
+        const field = fields.find((f) => f.name === pk);
+        return `${quoteIdent(pk)} = ${valueToSqlLiteral(v, field?.dataTypeID)}`;
+      })
+      .join(' AND ');
+  } else {
+    // Fallback: match all columns
+    whereClause = fields
+      .map((f) => {
+        const v = row[f.name];
+        if (v === null || v === undefined) {
+          return `${quoteIdent(f.name)} IS NULL`;
+        }
+        return `${quoteIdent(f.name)} = ${valueToSqlLiteral(v, f.dataTypeID)}`;
+      })
+      .join(' AND ');
+  }
+
+  return `DELETE FROM ${tableIdent} WHERE ${whereClause}`;
+}

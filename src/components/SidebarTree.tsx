@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { Box, Text, Flex, Spinner, TextField, Badge } from '@radix-ui/themes';
+import { Box, Text, Flex, Spinner, TextField, Badge, ContextMenu } from '@radix-ui/themes';
 import { ChevronRightIcon, ChevronDownIcon, TableIcon, EyeOpenIcon, MagnifyingGlassIcon } from '@radix-ui/react-icons';
 import type { TableInfo } from '@/types';
+import { downloadText } from '@/lib/exporters';
 
 interface SchemaNode {
   name: string;
@@ -13,9 +14,10 @@ interface SchemaNode {
 interface Props {
   connectionId: string;
   onOpenTable: (schema: string, table: string) => void;
+  onOpenQueryTabWithSql?: (sql: string, title?: string) => void;
 }
 
-export function SidebarTree({ connectionId, onOpenTable }: Props) {
+export function SidebarTree({ connectionId, onOpenTable, onOpenQueryTabWithSql }: Props) {
   const [schemas, setSchemas] = useState<SchemaNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,6 +25,49 @@ export function SidebarTree({ connectionId, onOpenTable }: Props) {
   // tableKey → row count (e.g. "public.users" → 4821)
   const [rowCounts, setRowCounts] = useState<Record<string, number>>({});
   const [countsLoading, setCountsLoading] = useState<Record<string, boolean>>({});
+  const [downloadingTables, setDownloadingTables] = useState<Set<string>>(new Set());
+
+  const handleCopyFullName = (schema: string, table: string) => {
+    const fullName = `"${schema}"."${table}"`;
+    navigator.clipboard.writeText(fullName);
+  };
+
+  const handleCopyTableName = (table: string) => {
+    navigator.clipboard.writeText(table);
+  };
+
+  const handleDownloadJson = async (schema: string, table: string) => {
+    const key = `${schema}.${table}`;
+    setDownloadingTables((prev) => {
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
+    try {
+      // Limit 10000 rows to prevent renderer crash
+      const sql = `SELECT * FROM "${schema}"."${table}" LIMIT 10000`;
+      const res = await window.flashpostgre.query.run(connectionId, sql);
+      if (res.ok) {
+        const jsonStr = JSON.stringify(res.rows, null, 2);
+        downloadText(`${schema}.${table}.json`, jsonStr, 'application/json;charset=utf-8');
+      } else {
+        alert(res.error ?? 'Failed to load table data.');
+      }
+    } catch (err: any) {
+      alert('Error exporting JSON: ' + (err?.message ?? String(err)));
+    } finally {
+      setDownloadingTables((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
+  };
+
+  const handleDeleteTable = (schema: string, table: string) => {
+    const sql = `-- Dropping table "${schema}"."${table}"\nBEGIN;\nDROP TABLE "${schema}"."${table}";\nCOMMIT;`;
+    onOpenQueryTabWithSql?.(sql, `Drop ${table}`);
+  };
 
   const loadSchemas = useCallback(async () => {
     setLoading(true);
@@ -189,8 +234,8 @@ export function SidebarTree({ connectionId, onOpenTable }: Props) {
   }
 
   return (
-    <Box>
-      <Box px="3" pb="2">
+    <Box style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <Box px="3" pb="2" style={{ flex: '0 0 auto' }}>
         <TextField.Root
           size="1"
           placeholder="Filter tables/schemas…"
@@ -203,79 +248,102 @@ export function SidebarTree({ connectionId, onOpenTable }: Props) {
         </TextField.Root>
       </Box>
 
-      {filteredSchemas.map((s) => (
-        <Box key={s.name}>
-          <Flex
-            className="fp-tree-row"
-            data-kind="schema"
-            onClick={() => toggle(s.name)}
-          >
-            {s.expanded ? <ChevronDownIcon /> : <ChevronRightIcon />}
-            <Text size="2" weight="medium" style={{ flex: 1 }}>
-              {s.name}
-            </Text>
-            {s.loading && <span className="fp-spinner" />}
-          </Flex>
-          {s.expanded && (
-            <Box className="fp-tree-children">
-              {s.tables.length === 0 && !s.loading && (
-                <Box px="2" py="1">
-                  <Text size="1" color="gray">No tables</Text>
-                </Box>
-              )}
-              {s.tables.map((t) => {
-                const countKey = `${t.table_schema}.${t.table_name}`;
-                const count = rowCounts[countKey];
-                const countIsLoading = countsLoading[countKey];
-                return (
-                  <Flex
-                    key={countKey}
-                    className="fp-tree-row"
-                    data-kind="table"
-                    align="center"
-                  >
-                    {t.table_type === 'VIEW' ? <EyeOpenIcon /> : <TableIcon />}
-                    <Text
-                      size="1"
-                      style={{ flex: 1, cursor: 'pointer' }}
-                      onClick={() => onOpenTable?.(t.table_schema, t.table_name)}
-                    >
-                      {t.table_name}
-                    </Text>
-                    {count !== undefined && (
-                      <Badge
-                        size="1"
-                        variant="soft"
-                        color="gray"
-                        style={{ cursor: 'pointer', marginLeft: 4 }}
-                        onClick={() => onOpenTable?.(t.table_schema, t.table_name)}
-                        title={`${count.toLocaleString()} rows`}
-                      >
-                        {count >= 1000000
-                          ? `${(count / 1000000).toFixed(1)}M`
-                          : count >= 1000
-                          ? `${(count / 1000).toFixed(1)}K`
-                          : count}
-                      </Badge>
-                    )}
-                    {countIsLoading && (
-                      <Spinner size="1" style={{ marginLeft: 4 }} />
-                    )}
-                    <Text
-                      size="1"
-                      color="gray"
-                      onClick={() => onOpenTable?.(t.table_schema, t.table_name)}
-                      style={{ cursor: 'pointer', marginLeft: 4 }}
-                    >
-                      {t.table_type === 'VIEW' ? 'view' : 'table'}
-                    </Text>
-                  </Flex>
-                );
-              })}
-            </Box>
-          )}
-        </Box>
-      ))}
+      <Box style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+        {filteredSchemas.map((s) => (
+          <Box key={s.name}>
+            <Flex
+              className="fp-tree-row"
+              data-kind="schema"
+              onClick={() => toggle(s.name)}
+            >
+              {s.expanded ? <ChevronDownIcon /> : <ChevronRightIcon />}
+              <Text size="2" weight="medium" style={{ flex: 1 }}>
+                {s.name}
+              </Text>
+              {s.loading && <span className="fp-spinner" />}
+            </Flex>
+            {s.expanded && (
+              <Box className="fp-tree-children">
+                {s.tables.length === 0 && !s.loading && (
+                  <Box px="2" py="1">
+                    <Text size="1" color="gray">No tables</Text>
+                  </Box>
+                )}
+                {s.tables.map((t) => {
+                  const countKey = `${t.table_schema}.${t.table_name}`;
+                  const count = rowCounts[countKey];
+                  const countIsLoading = countsLoading[countKey];
+                  const isDownloading = downloadingTables.has(countKey);
+                  return (
+                    <ContextMenu.Root key={countKey}>
+                      <ContextMenu.Trigger>
+                        <Flex
+                          className="fp-tree-row"
+                          data-kind="table"
+                          align="center"
+                          style={{ width: '100%' }}
+                        >
+                          {t.table_type === 'VIEW' ? <EyeOpenIcon /> : <TableIcon />}
+                          <Text
+                            size="1"
+                            style={{ flex: 1, cursor: 'pointer' }}
+                            onClick={() => onOpenTable?.(t.table_schema, t.table_name)}
+                          >
+                            {t.table_name}
+                          </Text>
+                          {count !== undefined && (
+                            <Badge
+                              size="1"
+                              variant="soft"
+                              color="gray"
+                              style={{ cursor: 'pointer', marginLeft: 4 }}
+                              onClick={() => onOpenTable?.(t.table_schema, t.table_name)}
+                              title={`${count.toLocaleString()} rows`}
+                            >
+                              {count >= 1000000
+                                ? `${(count / 1000000).toFixed(1)}M`
+                                : count >= 1000
+                                ? `${(count / 1000).toFixed(1)}K`
+                                : count}
+                            </Badge>
+                          )}
+                          {(countIsLoading || isDownloading) && (
+                            <Spinner size="1" style={{ marginLeft: 4 }} />
+                          )}
+                          <Text
+                            size="1"
+                            color="gray"
+                            onClick={() => onOpenTable?.(t.table_schema, t.table_name)}
+                            style={{ cursor: 'pointer', marginLeft: 4 }}
+                          >
+                            {t.table_type === 'VIEW' ? 'view' : 'table'}
+                          </Text>
+                        </Flex>
+                      </ContextMenu.Trigger>
+                      <ContextMenu.Content>
+                        <ContextMenu.Item onClick={() => handleCopyFullName(t.table_schema, t.table_name)}>
+                          Copy Full Name
+                        </ContextMenu.Item>
+                        <ContextMenu.Item onClick={() => handleCopyTableName(t.table_name)}>
+                          Copy Table Name
+                        </ContextMenu.Item>
+                        <ContextMenu.Separator />
+                        <ContextMenu.Item onClick={() => handleDownloadJson(t.table_schema, t.table_name)} disabled={isDownloading}>
+                          Download JSON (Max 10k rows)
+                        </ContextMenu.Item>
+                        <ContextMenu.Separator />
+                        <ContextMenu.Item color="red" onClick={() => handleDeleteTable(t.table_schema, t.table_name)}>
+                          Drop Table…
+                        </ContextMenu.Item>
+                      </ContextMenu.Content>
+                    </ContextMenu.Root>
+                  );
+                })}
+              </Box>
+            )}
+          </Box>
+        ))}
+      </Box>
     </Box>
   );
 }

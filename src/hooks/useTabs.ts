@@ -82,6 +82,18 @@ export function useTabs(activeConnectionId: string | null) {
     setActiveId(id);
   }, []);
 
+  const openQueryTabWithSql = useCallback((sql: string, title?: string) => {
+    const id = uid('q');
+    setTabs((prev) => {
+      const num = prev.filter((t) => t.kind === 'query').length + 1;
+      return [
+        ...prev,
+        { id, kind: 'query', title: title || `Query ${num}`, sql },
+      ];
+    });
+    setActiveId(id);
+  }, []);
+
   const openTable = useCallback((schema: string, table: string) => {
     const id = uid('t');
     setTabs((prev) => {
@@ -140,5 +152,6 @@ export function useTabs(activeConnectionId: string | null) {
     openDiagnosticsTab,
     updateQuerySql,
     renameTab,
+    openQueryTabWithSql,
   };
 }

@@ -52,4 +52,18 @@ export const store = {
     window.flashpostgre.store.set('preferences.theme', theme),
   getPreferences: (): Promise<{ theme: 'light' | 'dark'; queryHistory: any[] }> =>
     window.flashpostgre.store.get('preferences'),
+
+  // Deletions History for rollback
+  getDeleteHistory: (): Promise<any[]> =>
+    window.flashpostgre.store.get('preferences.deleteHistory'),
+  pushDeleteHistory: async (entry: any) => {
+    const history = await window.flashpostgre.store.get('preferences.deleteHistory');
+    const next = [entry, ...(history ?? [])].slice(0, 100);
+    await window.flashpostgre.store.set('preferences.deleteHistory', next);
+  },
+  deleteDeleteHistoryEntry: async (id: string) => {
+    const history = await window.flashpostgre.store.get('preferences.deleteHistory');
+    const next = (history ?? []).filter((h: any) => h.id !== id);
+    await window.flashpostgre.store.set('preferences.deleteHistory', next);
+  },
 };

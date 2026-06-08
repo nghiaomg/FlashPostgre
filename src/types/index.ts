@@ -119,7 +119,7 @@ declare global {
         columns: (connectionId: string, schema: string, table: string) => Promise<{ ok: boolean; rows?: ColumnInfo[]; error?: string }>;
         indexes: (connectionId: string, schema: string, table: string) => Promise<{ ok: boolean; rows?: IndexInfo[]; error?: string }>;
         primaryKeys: (connectionId: string, schema: string, table: string) => Promise<{ ok: boolean; rows?: PrimaryKeyInfo[]; error?: string }>;
-        preview: (connectionId: string, schema: string, table: string, limit?: number, offset?: number, orderBy?: string, orderDir?: 'ASC' | 'DESC', where?: string) => Promise<QueryResult>;
+        preview: (connectionId: string, schema: string, table: string, limit?: number, offset?: number, orderBy?: string, orderDir?: 'ASC' | 'DESC', where?: string, selectFields?: string[]) => Promise<QueryResult>;
         count: (connectionId: string, schema: string, table: string, where?: string) => Promise<{ ok: boolean; total?: number; error?: string }>;
       };
     };

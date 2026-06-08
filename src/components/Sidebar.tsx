@@ -13,6 +13,7 @@ interface Props {
   onEdit: (cfg: ConnectionConfig) => void;
   onOpenTable: (schema: string, table: string) => void;
   onOpenMonitor: () => void;
+  onOpenQueryTabWithSql?: (sql: string, title?: string) => void;
 }
 
 export function Sidebar({
@@ -24,15 +25,16 @@ export function Sidebar({
   onEdit,
   onOpenTable,
   onOpenMonitor,
+  onOpenQueryTabWithSql,
 }: Props) {
   return (
-    <Flex direction="column" height="100%">
+    <Flex direction="column" style={{ height: '100%', minHeight: 0 }}>
       <Flex
         align="center"
         justify="between"
         px="3"
         py="2"
-        style={{ borderBottom: '1px solid var(--gray-a4)' }}
+        style={{ borderBottom: '1px solid var(--gray-a4)', flex: '0 0 auto' }}
       >
         <Heading size="2" weight="medium" color="gray">
           Connections
@@ -44,14 +46,17 @@ export function Sidebar({
         </Tooltip>
       </Flex>
 
-      <ConnectionList
-        connections={connections}
-        activeId={activeId}
-        onConnect={onConnect}
-        onSelect={onSelect}
-        onEdit={onEdit}
-        onAddNew={onAddNew}
-      />
+      <Box style={{ flex: activeId ? '0 0 40%' : '1', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <ConnectionList
+          connections={connections}
+          activeId={activeId}
+          onConnect={onConnect}
+          onSelect={onSelect}
+          onEdit={onEdit}
+          onAddNew={onAddNew}
+          hasExplorer={!!activeId}
+        />
+      </Box>
 
       {activeId && (
         <Box
@@ -77,8 +82,8 @@ export function Sidebar({
               📈 Monitor
             </Button>
           </Flex>
-          <Box style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
-            <SidebarTree connectionId={activeId} onOpenTable={onOpenTable} />
+          <Box style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <SidebarTree connectionId={activeId} onOpenTable={onOpenTable} onOpenQueryTabWithSql={onOpenQueryTabWithSql} />
           </Box>
         </Box>
       )}

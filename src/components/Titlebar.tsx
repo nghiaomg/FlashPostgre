@@ -14,6 +14,7 @@ import {
 import type { ConnectionConfig } from '@/types';
 import type { ThemeMode } from '@/theme';
 import { useEffect, useState } from 'react';
+import { APP_VERSION } from '@/version';
 
 interface Props {
   activeConnection: ConnectionConfig | null;
@@ -61,7 +62,7 @@ export function Titlebar({
 
       <Flex align="center" gap="2" style={{ position: 'relative' }}>
         <Text size="2" weight="medium" color="gray">
-          FlashPostgre
+          FlashPostgre <Text as="span" color="gray" highContrast>v{APP_VERSION}</Text>
         </Text>
       </Flex>
 

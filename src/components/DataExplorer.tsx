@@ -14,6 +14,7 @@ import {
   Badge,
   Checkbox,
   ContextMenu,
+  DropdownMenu,
 } from '@radix-ui/themes';
 import {
   ReloadIcon,
@@ -28,23 +29,29 @@ import {
   PlusIcon,
   UploadIcon,
   Cross2Icon,
+  DotsVerticalIcon,
 } from '@radix-ui/react-icons';
 import { CsvImportDialog } from './CsvImportDialog';
 import type { QueryResult, ColumnInfo, PrimaryKeyInfo, QueryField } from '@/types';
 import { rowsToCsv, rowsToJson, downloadText } from '@/lib/exporters';
-import { buildRowUpdates, PendingCellEdit, isBoolOid, isNumericOid, isJsonOid, valueToSqlLiteral } from '@/lib/sqlBuilders';
+import { buildRowUpdates, buildDeleteSql, PendingCellEdit, isBoolOid, isNumericOid, isJsonOid, valueToSqlLiteral } from '@/lib/sqlBuilders';
 import { AddRowDialog } from './AddRowDialog';
+import { store } from '@/lib/store';
 
 interface Props {
   connectionId: string;
   schema: string;
   table: string;
   initialLimit?: number;
+  onOpenQueryTabWithSql?: (sql: string, title?: string) => void;
+  selectedColumns?: string[];
+  activeTab?: string;
 }
 
 type SortDir = 'ASC' | 'DESC' | null;
 
-export function DataExplorer({ connectionId, schema, table, initialLimit = 50 }: Props) {
+export function DataExplorer({ connectionId, schema, table, initialLimit = 50, onOpenQueryTabWithSql, selectedColumns, activeTab }: Props) {
+  const lastLoadedColumnsRef = useRef<string[] | undefined>(selectedColumns);
   const [primaryKeys, setPrimaryKeys] = useState<string[]>([]);
   const [columns, setColumns] = useState<ColumnInfo[]>([]);
   const [rows, setRows] = useState<any[]>([]);
@@ -111,7 +118,8 @@ export function DataExplorer({ connectionId, schema, table, initialLimit = 50 }:
           page * pageSize,
           sortColumn ?? undefined,
           sortDir ?? undefined,
-          whereClause
+          whereClause,
+          selectedColumns
         ),
       ]);
       if (!pkRes.ok) {
@@ -130,13 +138,14 @@ export function DataExplorer({ connectionId, schema, table, initialLimit = 50 }:
       setColumns(colsRes.rows ?? []);
       setFields(previewRes.fields);
       setRows(previewRes.rows);
+      lastLoadedColumnsRef.current = selectedColumns;
       if (countRes.ok) setTotal(countRes.total ?? null);
     } catch (err: any) {
       setError(err?.message ?? String(err));
     } finally {
       setLoading(false);
     }
-  }, [connectionId, schema, table, page, pageSize, sortColumn, sortDir, whereClause]);
+  }, [connectionId, schema, table, page, pageSize, sortColumn, sortDir, whereClause, selectedColumns]);
 
   // Reset everything when the table changes
   useEffect(() => {
@@ -151,6 +160,18 @@ export function DataExplorer({ connectionId, schema, table, initialLimit = 50 }:
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connectionId, schema, table]);
+
+  // Re-fetch when columns selection changes and tab becomes active
+  useEffect(() => {
+    if (activeTab === 'data') {
+      const hasChanged = JSON.stringify(selectedColumns) !== JSON.stringify(lastLoadedColumnsRef.current);
+      if (hasChanged) {
+        lastLoadedColumnsRef.current = selectedColumns;
+        setPage(0);
+        load();
+      }
+    }
+  }, [activeTab, selectedColumns, load]);
 
   // Re-fetch when pagination or sort changes (skip the first run because the effect above
   // already requested a load)
@@ -293,7 +314,34 @@ export function DataExplorer({ connectionId, schema, table, initialLimit = 50 }:
     },
     [pending, fields]
   );
+  const handleDeleteRow = useCallback(
+    async (row: any, rk: string) => {
+      const rowObj = getCompleteRowObj(row, rk);
+      const deleteSql = buildDeleteSql(schema, table, rowObj, primaryKeys, fields);
+      const sqlToRun = `-- Deleting row from ${schema}.${table}\nBEGIN;\n${deleteSql};\nCOMMIT;`;
 
+      const entry = {
+        id: `del-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        schema,
+        table,
+        row: rowObj,
+        primaryKeys,
+        fields,
+        deletedAt: Date.now(),
+        connectionId,
+        sqlUsed: sqlToRun,
+      };
+      await store.pushDeleteHistory(entry);
+
+      if (onOpenQueryTabWithSql) {
+        onOpenQueryTabWithSql(sqlToRun, `Delete ${schema}.${table}`);
+      } else {
+        navigator.clipboard.writeText(sqlToRun);
+        alert('Query copied to clipboard. Transition callback missing.');
+      }
+    },
+    [connectionId, schema, table, primaryKeys, fields, getCompleteRowObj, onOpenQueryTabWithSql]
+  );
   return (
     <Box style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       {error && (
@@ -343,25 +391,33 @@ export function DataExplorer({ connectionId, schema, table, initialLimit = 50 }:
           >
             <PlusIcon /> Add Row
           </Button>
-          <Button size="1" variant="soft" onClick={() => setCsvImportOpen(true)}>
-            <UploadIcon /> Import CSV
-          </Button>
-          <Button
-            size="1"
-            variant="soft"
-            onClick={() => downloadText(`${schema}.${table}.csv`, rowsToCsv(rows, fields), 'text/csv;charset=utf-8')}
-            disabled={rows.length === 0}
-          >
-            <DownloadIcon /> CSV
-          </Button>
-          <Button
-            size="1"
-            variant="soft"
-            onClick={() => downloadText(`${schema}.${table}.json`, rowsToJson(rows), 'application/json;charset=utf-8')}
-            disabled={rows.length === 0}
-          >
-            <DownloadIcon /> JSON
-          </Button>
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger>
+              <IconButton size="1" variant="soft" color="gray" style={{ cursor: 'pointer' }} title="Import / Export">
+                <DotsVerticalIcon />
+              </IconButton>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Content>
+              <DropdownMenu.Label>Import</DropdownMenu.Label>
+              <DropdownMenu.Item onClick={() => setCsvImportOpen(true)}>
+                <UploadIcon /> Import CSV
+              </DropdownMenu.Item>
+              <DropdownMenu.Separator />
+              <DropdownMenu.Label>Export</DropdownMenu.Label>
+              <DropdownMenu.Item
+                disabled={rows.length === 0}
+                onClick={() => downloadText(`${schema}.${table}.csv`, rowsToCsv(rows, fields), 'text/csv;charset=utf-8')}
+              >
+                <DownloadIcon /> Export CSV (Excel)
+              </DropdownMenu.Item>
+              <DropdownMenu.Item
+                disabled={rows.length === 0}
+                onClick={() => downloadText(`${schema}.${table}.json`, rowsToJson(rows), 'application/json;charset=utf-8')}
+              >
+                <DownloadIcon /> Export JSON
+              </DropdownMenu.Item>
+            </DropdownMenu.Content>
+          </DropdownMenu.Root>
           <Tooltip content="Refresh">
             <IconButton size="1" variant="ghost" onClick={load} disabled={loading}>
               {loading ? <Spinner size="1" /> : <ReloadIcon />}
@@ -421,10 +477,11 @@ export function DataExplorer({ connectionId, schema, table, initialLimit = 50 }:
         </Flex>
       )}
 
-      <Box style={{ overflow: 'auto', maxHeight: 'calc(100vh - 360px)' }}>
+      <Box style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
         <table className="fp-result-table">
             <thead>
             <tr>
+              <th style={{ width: '40px', textAlign: 'center' }}></th>
               {fields.map((f) => {
                 const isPk = primaryKeys.includes(f.name);
                 const isSorted = sortColumn === f.name;
@@ -465,6 +522,19 @@ export function DataExplorer({ connectionId, schema, table, initialLimit = 50 }:
               const rowEdits = pending.get(rk);
               return (
                 <tr key={i}>
+                  <td style={{ verticalAlign: 'middle', textAlign: 'center', padding: '0 4px', width: '40px' }}>
+                    <Tooltip content="Delete row (previews SQL)">
+                      <IconButton
+                        size="1"
+                        variant="ghost"
+                        color="red"
+                        onClick={() => handleDeleteRow(row, rk)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <TrashIcon width="14" height="14" />
+                      </IconButton>
+                    </Tooltip>
+                  </td>
                   {fields.map((f) => {
                     const isPk = primaryKeys.includes(f.name);
                     const pendingEdit = rowEdits?.get(f.name);
@@ -491,6 +561,7 @@ export function DataExplorer({ connectionId, schema, table, initialLimit = 50 }:
                         allFields={fields}
                         schema={schema}
                         table={table}
+                        onDeleteRow={() => handleDeleteRow(row, rk)}
                       />
                     );
                   })}
@@ -744,6 +815,7 @@ interface DataCellProps {
   allFields: QueryField[];
   schema: string;
   table: string;
+  onDeleteRow?: () => void;
 }
 
 function DataCell({
@@ -764,6 +836,7 @@ function DataCell({
   allFields,
   schema,
   table,
+  onDeleteRow,
 }: DataCellProps) {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -869,6 +942,14 @@ function DataCell({
             <ContextMenu.Item onClick={() => handleCopyRowAsInsert(allFields, schema, table)}>
               Copy Row as INSERT
             </ContextMenu.Item>
+            {onDeleteRow && (
+              <>
+                <ContextMenu.Separator />
+                <ContextMenu.Item color="red" onClick={onDeleteRow}>
+                  Delete Row
+                </ContextMenu.Item>
+              </>
+            )}
           </ContextMenu.Content>
         </ContextMenu.Root>
       )}

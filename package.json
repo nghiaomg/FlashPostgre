@@ -6,15 +6,16 @@
   "author": "FlashPostgre",
   "license": "MIT",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "dev": "npx tsx scripts/generate-version.ts && vite",
+    "build": "npx tsx scripts/generate-version.ts && tsc --noEmit && vite build",
     "preview": "vite preview",
     "electron:dev": "npm run build && electron .",
     "lint": "tsc --noEmit",
     "dist": "npm run build && electron-builder",
     "dist:win": "npm run build && electron-builder --win",
     "dist:portable": "npm run build && electron-builder --win portable",
-    "dist:dir": "npm run build && electron-builder --dir"
+    "dist:dir": "npm run build && electron-builder --dir",
+    "version": "npx tsx scripts/generate-version.ts"
   },
   "dependencies": {
     "@radix-ui/react-icons": "^1.3.0",
@@ -33,6 +34,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "electron": "^33.3.0",
     "electron-builder": "^25.1.8",
+    "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vite": "^6.0.7",
     "vite-plugin-electron": "^0.28.8",

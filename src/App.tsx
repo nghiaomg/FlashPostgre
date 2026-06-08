@@ -112,6 +112,7 @@ export default function App() {
               }}
               onOpenTable={(schema, table) => tabs.openTable(schema, table)}
               onOpenMonitor={tabs.openDiagnosticsTab}
+              onOpenQueryTabWithSql={tabs.openQueryTabWithSql}
             />
           </div>
 
@@ -149,6 +150,7 @@ export default function App() {
                   key={tabs.activeTab.id}
                   tab={tabs.activeTab}
                   connectionId={activeId}
+                  onOpenQueryTabWithSql={tabs.openQueryTabWithSql}
                 />
               ) : tabs.activeTab?.kind === 'diagnostics' ? (
                 <DiagnosticsTab

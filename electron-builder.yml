@@ -45,9 +45,6 @@ win:
     - target: portable
       arch:
         - x64
-  # Don't require code signing for the local build (no cert). Set CSC_LINK
-  # env var to enable signing.
-  sign: null
 
 # NSIS installer
 nsis:

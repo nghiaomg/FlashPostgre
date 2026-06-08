@@ -24,17 +24,78 @@ export function QueryTab({ tab, connectionId, onUpdateSql, onInsertSnippet }: Pr
   const [statementCount, setStatementCount] = useState(0);
   const [explain, setExplain] = useState<any>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [deleteHistory, setDeleteHistory] = useState<any[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historySearch, setHistorySearch] = useState('');
+  const [historyTab, setHistoryTab] = useState<'queries' | 'deletions'>('queries');
   const editorRef = useRef<HTMLDivElement>(null);
+
+  const loadHistories = useCallback(async () => {
+    const qh = await store.getQueryHistory();
+    setHistory(qh ?? []);
+    const dh = await store.getDeleteHistory();
+    setDeleteHistory(dh ?? []);
+  }, []);
 
   useEffect(() => {
     setSql(tab.sql);
   }, [tab.id, tab.sql]);
 
   useEffect(() => {
-    store.getQueryHistory().then((h) => setHistory(h ?? []));
-  }, []);
+    loadHistories();
+  }, [loadHistories]);
+
+  const toggleHistoryOpen = () => {
+    setHistoryOpen((o) => {
+      const next = !o;
+      if (next) {
+        loadHistories();
+      }
+      return next;
+    });
+  };
+
+  const handleRollbackRow = useCallback(
+    (h: any) => {
+      const cols: string[] = [];
+      const vals: string[] = [];
+      
+      const escapeVal = (value: unknown, oid?: number): string => {
+        if (value === null || value === undefined) return 'NULL';
+        if (typeof value === 'number') {
+          if (!Number.isFinite(value)) return 'NULL';
+          return String(value);
+        }
+        if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE';
+        if (value instanceof Date) {
+          return `'${value.toISOString()}'::timestamptz`;
+        }
+        const JSON_OIDS = [114, 3802];
+        if (oid && JSON_OIDS.includes(oid)) {
+          try {
+            const obj = typeof value === 'string' ? JSON.parse(value) : value;
+            return `'${JSON.stringify(obj).replace(/'/g, "''")}'::jsonb`;
+          } catch {
+            // fallthrough
+          }
+        }
+        return `'${String(value).replace(/'/g, "''")}'`;
+      };
+
+      for (const f of h.fields) {
+        cols.push(`"${f.name}"`);
+        vals.push(escapeVal(h.row[f.name], f.dataTypeID));
+      }
+
+      const rollbackSql = `-- Rollback deletion of ${h.schema}.${h.table}\nBEGIN;\nINSERT INTO "${h.schema}"."${h.table}" (${cols.join(', ')}) VALUES (${vals.join(', ')});\nCOMMIT;`;
+      
+      setSql(rollbackSql);
+      if (editorRef.current) editorRef.current.textContent = rollbackSql;
+      onUpdateSql?.(rollbackSql);
+      setHistoryOpen(false);
+    },
+    [onUpdateSql]
+  );
 
   const run = useCallback(async () => {
     const text = sql.trim();
@@ -93,6 +154,13 @@ export function QueryTab({ tab, connectionId, onUpdateSql, onInsertSnippet }: Pr
   const activeHistory = historySearch.trim()
     ? history.filter((h) => h.sql.toLowerCase().includes(historySearch.toLowerCase()))
     : history;
+
+  const activeDeleteHistory = historySearch.trim()
+    ? deleteHistory.filter((h) =>
+        h.table.toLowerCase().includes(historySearch.toLowerCase()) ||
+        h.schema.toLowerCase().includes(historySearch.toLowerCase())
+      )
+    : deleteHistory;
 
   const formatTs = (ts: number) => {
     const d = new Date(ts);
@@ -176,7 +244,7 @@ export function QueryTab({ tab, connectionId, onUpdateSql, onInsertSnippet }: Pr
               {statementCount} statements
             </Badge>
           )}
-          <Button size="2" variant="soft" onClick={() => setHistoryOpen((o) => !o)}>
+          <Button size="2" variant="soft" onClick={toggleHistoryOpen}>
             <ClockIcon /> History
           </Button>
         </Box>
@@ -184,60 +252,141 @@ export function QueryTab({ tab, connectionId, onUpdateSql, onInsertSnippet }: Pr
 
       {/* History search panel */}
       {historyOpen && (
-        <Box className="fp-history-panel" style={{ maxHeight: 220, overflowY: 'auto', border: '1px solid var(--gray-a4)', borderRadius: 6 }}>
-          <TextField.Root size="1" mb="2" placeholder="Search history…" value={historySearch} onChange={(e) => setHistorySearch(e.target.value)}>
+        <Box className="fp-history-panel" style={{ maxHeight: 280, display: 'flex', flexDirection: 'column', gap: '8px', border: '1px solid var(--gray-a4)', borderRadius: 6, padding: '10px' }}>
+          <Flex gap="2" style={{ borderBottom: '1px solid var(--gray-a3)', paddingBottom: '6px' }}>
+            <Button
+              size="1"
+              variant={historyTab === 'queries' ? 'solid' : 'ghost'}
+              onClick={() => setHistoryTab('queries')}
+              style={{ cursor: 'pointer' }}
+            >
+              Queries
+            </Button>
+            <Button
+              size="1"
+              variant={historyTab === 'deletions' ? 'solid' : 'ghost'}
+              onClick={() => setHistoryTab('deletions')}
+              style={{ cursor: 'pointer' }}
+            >
+              Deletions Rollback
+            </Button>
+          </Flex>
+
+          <TextField.Root size="1" placeholder={historyTab === 'queries' ? "Search queries…" : "Search deleted rows…"} value={historySearch} onChange={(e) => setHistorySearch(e.target.value)}>
             <TextField.Slot><MagnifyingGlassIcon /></TextField.Slot>
           </TextField.Root>
-          {activeHistory.length === 0 ? (
-            <Text size="1" color="gray">No matching queries.</Text>
+
+          {historyTab === 'queries' ? (
+            <Box style={{ flex: 1, overflowY: 'auto', maxHeight: '180px' }}>
+              {activeHistory.length === 0 ? (
+                <Text size="1" color="gray">No matching queries.</Text>
+              ) : (
+                activeHistory.map((h) => (
+                  <Flex
+                    key={h.id}
+                    align="center"
+                    gap="1"
+                    py="1"
+                    px="1"
+                    style={{ borderBottom: '1px solid var(--gray-a2)', cursor: 'pointer', borderRadius: 3 }}
+                    className="fp-snippet-row"
+                    onClick={() => {
+                      setSql(h.sql);
+                      if (editorRef.current) editorRef.current.textContent = h.sql;
+                      setHistoryOpen(false);
+                    }}
+                  >
+                    <Text size="1" style={{ flex: 1, fontFamily: 'JetBrains Mono, monospace', wordBreak: 'break-all' }}>
+                      {h.sql.length > 120 ? h.sql.slice(0, 120) + '…' : h.sql}
+                    </Text>
+                    <Flex align="center" gap="1" style={{ flexShrink: 0 }}>
+                      <Text size="1" color="gray">{formatTs(h.ts)}</Text>
+                      <IconButton
+                        size="1"
+                        variant="ghost"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(h.sql);
+                        }}
+                        title="Copy to clipboard"
+                      >
+                        <CopyIcon />
+                      </IconButton>
+                      <IconButton
+                        size="1"
+                        variant="ghost"
+                        color="red"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          await store.deleteHistoryEntry(h.id);
+                          setHistory((prev) => prev.filter((x) => x.id !== h.id));
+                        }}
+                        title="Delete from history"
+                      >
+                        <TrashIcon />
+                      </IconButton>
+                    </Flex>
+                  </Flex>
+                ))
+              )}
+            </Box>
           ) : (
-            activeHistory.map((h) => (
-              <Flex
-                key={h.id}
-                align="center"
-                gap="1"
-                py="1"
-                px="1"
-                style={{ borderBottom: '1px solid var(--gray-a2)', cursor: 'pointer', borderRadius: 3 }}
-                className="fp-snippet-row"
-                onClick={() => {
-                  setSql(h.sql);
-                  if (editorRef.current) editorRef.current.textContent = h.sql;
-                  setHistoryOpen(false);
-                }}
-              >
-                <Text size="1" style={{ flex: 1, fontFamily: 'JetBrains Mono, monospace', wordBreak: 'break-all' }}>
-                  {h.sql.length > 120 ? h.sql.slice(0, 120) + '…' : h.sql}
-                </Text>
-                <Flex align="center" gap="1" style={{ flexShrink: 0 }}>
-                  <Text size="1" color="gray">{formatTs(h.ts)}</Text>
-                  <IconButton
-                    size="1"
-                    variant="ghost"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigator.clipboard.writeText(h.sql);
-                    }}
-                    title="Copy to clipboard"
-                  >
-                    <CopyIcon />
-                  </IconButton>
-                  <IconButton
-                    size="1"
-                    variant="ghost"
-                    color="red"
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      await store.deleteHistoryEntry(h.id);
-                      setHistory((prev) => prev.filter((x) => x.id !== h.id));
-                    }}
-                    title="Delete from history"
-                  >
-                    <TrashIcon />
-                  </IconButton>
-                </Flex>
-              </Flex>
-            ))
+            <Box style={{ flex: 1, overflowY: 'auto', maxHeight: '180px' }}>
+              {activeDeleteHistory.length === 0 ? (
+                <Text size="1" color="gray">No matching deleted rows.</Text>
+              ) : (
+                activeDeleteHistory.map((h) => {
+                  const pkStr = h.primaryKeys.length > 0 
+                    ? h.primaryKeys.map((pk: string) => `${pk}=${h.row[pk]}`).join(', ')
+                    : 'no PK';
+                  return (
+                    <Flex
+                      key={h.id}
+                      align="center"
+                      gap="2"
+                      py="1"
+                      px="1"
+                      style={{ borderBottom: '1px solid var(--gray-a2)', borderRadius: 3 }}
+                      className="fp-snippet-row"
+                    >
+                      <Flex direction="column" style={{ flex: 1, minWidth: 0 }}>
+                        <Text size="1" weight="medium" truncate>
+                          Deleted {h.schema}.{h.table}
+                        </Text>
+                        <Text size="1" color="gray" truncate>
+                          Key: ({pkStr})
+                        </Text>
+                      </Flex>
+                      <Flex align="center" gap="1" style={{ flexShrink: 0 }}>
+                        <Text size="1" color="gray" mr="1">{formatTs(h.deletedAt)}</Text>
+                        <Button
+                          size="1"
+                          color="green"
+                          onClick={() => handleRollbackRow(h)}
+                          style={{ cursor: 'pointer' }}
+                          title="Generate rollback insert SQL"
+                        >
+                          ROLLBACK
+                        </Button>
+                        <IconButton
+                          size="1"
+                          variant="ghost"
+                          color="red"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            await store.deleteDeleteHistoryEntry(h.id);
+                            setDeleteHistory((prev) => prev.filter((x) => x.id !== h.id));
+                          }}
+                          title="Delete history entry"
+                        >
+                          <TrashIcon />
+                        </IconButton>
+                      </Flex>
+                    </Flex>
+                  );
+                })
+              )}
+            </Box>
           )}
         </Box>
       )}

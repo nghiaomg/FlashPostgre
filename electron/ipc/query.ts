@@ -45,32 +45,47 @@ export function registerQueryHandlers(ipc: IpcMain) {
     }
   });
 
-  // Run multiple statements sequentially. Stops at the first failure and returns
-  // the results collected up to that point.
+  // Run multiple statements sequentially on a single client connection.
+  // Stops at the first failure and returns the results collected up to that point.
   ipc.handle('query:runBatch', async (_e, connectionId: string, statements: string[]) => {
     if (!connectionManager.has(connectionId)) {
       return { ok: false, results: [], error: 'No active connection. Connect first.' };
     }
-    const results: any[] = [];
-    for (const sql of statements) {
-      try {
-        const result = await connectionManager.query(connectionId, sql);
-        results.push({
-          ok: true,
-          sql,
-          rows: result.rows,
-          fields: result.fields?.map((f) => ({ name: f.name, dataTypeID: f.dataTypeID })) ?? [],
-          rowCount: result.rowCount,
-        });
-      } catch (err: any) {
-        return {
-          ok: false,
-          results,
-          error: `Failed at: ${sql.slice(0, 60)}… — ${err?.message ?? String(err)}`,
-        };
-      }
+    const entry = connectionManager.getPool(connectionId);
+    if (!entry) {
+      return { ok: false, results: [], error: 'No active connection. Connect first.' };
     }
-    return { ok: true, results };
+
+    const client = await entry.connect();
+    const results: any[] = [];
+    try {
+      for (const sql of statements) {
+        try {
+          const result = await client.query(sql);
+          results.push({
+            ok: true,
+            sql,
+            rows: result.rows,
+            fields: result.fields?.map((f) => ({ name: f.name, dataTypeID: f.dataTypeID })) ?? [],
+            rowCount: result.rowCount ?? result.rows.length,
+          });
+        } catch (err: any) {
+          results.push({
+            ok: false,
+            sql,
+            error: err?.message ?? String(err),
+          });
+          return {
+            ok: false,
+            results,
+            error: `Failed at: ${sql.slice(0, 60)}… — ${err?.message ?? String(err)}`,
+          };
+        }
+      }
+      return { ok: true, results };
+    } finally {
+      client.release();
+    }
   });
 
   // Run a list of statements in a single transaction. Rolls back on any failure.

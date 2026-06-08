@@ -1,5 +1,5 @@
-import { Box, Flex, Text, Spinner, Button, Tooltip, IconButton } from '@radix-ui/themes';
-import { DownloadIcon, CopyIcon, CheckIcon } from '@radix-ui/react-icons';
+import { Box, Flex, Text, Spinner, Button, Tooltip, IconButton, DropdownMenu } from '@radix-ui/themes';
+import { DownloadIcon, CopyIcon, CheckIcon, ChevronDownIcon } from '@radix-ui/react-icons';
 import { useState } from 'react';
 import type { QueryResult } from '@/types';
 import { rowsToCsv, rowsToJson, downloadText } from '@/lib/exporters';
@@ -62,22 +62,21 @@ export function ResultView({ result, filenamePrefix }: Props) {
               {copied ? <CheckIcon /> : <CopyIcon />}
             </IconButton>
           </Tooltip>
-          <Button
-            size="1"
-            variant="soft"
-            onClick={() => downloadText(`${prefix}.csv`, rowsToCsv(rows, fields), 'text/csv;charset=utf-8')}
-            disabled={rows.length === 0}
-          >
-            <DownloadIcon /> CSV
-          </Button>
-          <Button
-            size="1"
-            variant="soft"
-            onClick={() => downloadText(`${prefix}.json`, rowsToJson(rows), 'application/json;charset=utf-8')}
-            disabled={rows.length === 0}
-          >
-            <DownloadIcon /> JSON
-          </Button>
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger>
+              <Button size="1" variant="soft" disabled={rows.length === 0}>
+                <DownloadIcon /> Export <ChevronDownIcon />
+              </Button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Content>
+              <DropdownMenu.Item onClick={() => downloadText(`${prefix}.csv`, rowsToCsv(rows, fields), 'text/csv;charset=utf-8')}>
+                <DownloadIcon /> Export as CSV
+              </DropdownMenu.Item>
+              <DropdownMenu.Item onClick={() => downloadText(`${prefix}.json`, rowsToJson(rows), 'application/json;charset=utf-8')}>
+                <DownloadIcon /> Export as JSON
+              </DropdownMenu.Item>
+            </DropdownMenu.Content>
+          </DropdownMenu.Root>
         </Flex>
       </Flex>
 

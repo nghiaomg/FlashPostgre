@@ -53,8 +53,9 @@ contextBridge.exposeInMainWorld('flashpostgre', {
       offset?: number,
       orderBy?: string,
       orderDir?: 'ASC' | 'DESC',
-      where?: string
-    ) => ipcRenderer.invoke('schema:preview', connectionId, schema, table, limit, offset, orderBy, orderDir, where),
+      where?: string,
+      selectFields?: string[]
+    ) => ipcRenderer.invoke('schema:preview', connectionId, schema, table, limit, offset, orderBy, orderDir, where, selectFields),
     count: (connectionId: string, schema: string, table: string, where?: string) =>
       ipcRenderer.invoke('schema:count', connectionId, schema, table, where),
   },

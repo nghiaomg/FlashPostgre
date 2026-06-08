@@ -12,6 +12,8 @@ interface Props {
   onSelect?: (id: string | null) => void | Promise<void>;
   onEdit: (cfg: ConnectionConfig) => void;
   onAddNew?: () => void;
+  /** When true, the explorer pane is visible below, so connections take less space. */
+  hasExplorer?: boolean;
 }
 
 const ENV_ORDER: Environment[] = ['prod', 'staging', 'dev', 'local', 'custom'];
@@ -37,6 +39,7 @@ export function ConnectionList({
   onSelect,
   onEdit,
   onAddNew,
+  hasExplorer = false,
 }: Props) {
   const [connectingId, setConnectingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -100,11 +103,8 @@ export function ConnectionList({
       py="2"
       gap="2"
       style={{
-        // Cap the connections pane so the explorer below can take the remaining
-        // space and scroll independently. Without this, a long list of connections
-        // pushes the explorer off-screen and breaks the tree scroll.
-        flex: '0 0 auto',
-        maxHeight: '50%',
+        // Take full height of parent container (constrained by Sidebar)
+        flex: 1,
         minHeight: 0,
         overflowY: 'auto',
       }}
